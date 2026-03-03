@@ -1,0 +1,31 @@
+{
+  "name": "@airfocus/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@airfocus/database": "workspace:*",
+    "@airfocus/shared": "workspace:*",
+    "@trpc/server": "^11",
+    "drizzle-orm": "^0.39",
+    "fastify": "^5",
+    "@fastify/cors": "^10",
+    "@fastify/cookie": "^11",
+    "@fastify/websocket": "^11",
+    "superjson": "^2",
+    "zod": "^3.24",
+    "argon2": "^0.41",
+    "ioredis": "^5"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "typescript": "^5.7",
+    "@types/node": "^22"
+  }
+}

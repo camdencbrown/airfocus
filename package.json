@@ -1,0 +1,23 @@
+{
+  "name": "airfocus",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "pnpm --filter @airfocus/database generate",
+    "db:migrate": "pnpm --filter @airfocus/database migrate",
+    "db:push": "pnpm --filter @airfocus/database push",
+    "db:studio": "pnpm --filter @airfocus/database studio"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["argon2", "esbuild", "sharp"]
+  }
+}
