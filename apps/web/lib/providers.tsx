@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { trpc } from "./trpc";
+import { useThemeStore, applyTheme } from "./theme";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -35,6 +36,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       ],
     })
   );
+
+  // Apply theme on mount and when it changes
+  const theme = useThemeStore((s) => s.theme);
+  useEffect(() => {
+    applyTheme(theme);
+    // Listen for system theme changes
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => { if (theme === "system") applyTheme("system"); };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [theme]);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

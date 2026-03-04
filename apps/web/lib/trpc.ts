@@ -1,6 +1,6 @@
 "use client";
 
 import { createTRPCReact } from "@trpc/react-query";
-import type { AppRouter } from "@airfocus/api/src/routes/index.js";
+import type { AppRouter } from "@airfocus/api/trpc";
 
 export const trpc = createTRPCReact<AppRouter>();

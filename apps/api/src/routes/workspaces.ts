@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
 import { router, protectedProcedure } from "../lib/trpc.js";
+import { safeUserColumns } from "../lib/auth-helpers.js";
 import {
   workspaces,
   workspaceMembers,
@@ -41,7 +42,7 @@ export const workspaceRouter = router({
           itemTypes: true,
           statuses: true,
           customFields: true,
-          members: { with: { user: true } },
+          members: { with: { user: { columns: safeUserColumns } } },
         },
       });
 

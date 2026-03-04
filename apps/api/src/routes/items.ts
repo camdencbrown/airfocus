@@ -4,6 +4,7 @@ import { eq, and, desc, asc, isNull } from "drizzle-orm";
 import { router, protectedProcedure } from "../lib/trpc.js";
 import { items, comments, activityLog, customFieldValues } from "@airfocus/database";
 import { createItemSchema, updateItemSchema, createCommentSchema } from "@airfocus/shared";
+import { safeUserColumns, assertWorkspaceMember } from "../lib/auth-helpers.js";
 
 export const itemRouter = router({
   list: protectedProcedure
@@ -18,6 +19,8 @@ export const itemRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertWorkspaceMember(ctx.db, ctx.userId, input.workspaceId);
+
       const conditions = [
         eq(items.workspaceId, input.workspaceId),
         isNull(items.archivedAt),
@@ -44,7 +47,7 @@ export const itemRouter = router({
         with: {
           status: true,
           itemType: true,
-          assignee: true,
+          assignee: { columns: safeUserColumns },
         },
         orderBy: [asc(items.position)],
         limit: input.limit + 1,
@@ -67,14 +70,14 @@ export const itemRouter = router({
         with: {
           status: true,
           itemType: true,
-          assignee: true,
-          creator: true,
+          assignee: { columns: safeUserColumns },
+          creator: { columns: safeUserColumns },
           children: {
             with: { status: true, itemType: true },
             orderBy: [asc(items.position)],
           },
           comments: {
-            with: { author: true },
+            with: { author: { columns: safeUserColumns } },
             orderBy: [asc(comments.createdAt)],
           },
           fieldValues: true,
@@ -91,6 +94,7 @@ export const itemRouter = router({
   create: protectedProcedure
     .input(createItemSchema.extend({ workspaceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      await assertWorkspaceMember(ctx.db, ctx.userId, input.workspaceId);
       const { workspaceId, customFields: cf, startDate, endDate, ...data } = input;
 
       const [item] = await ctx.db
@@ -150,8 +154,10 @@ export const itemRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Item not found" });
       }
 
-      const { customFields: cf, ...data } = input.data;
+      const { customFields: cf, startDate, endDate, ...data } = input.data;
       const updates: Record<string, unknown> = { ...data, updatedAt: new Date() };
+      if (startDate !== undefined) updates.startDate = startDate ? new Date(startDate) : null;
+      if (endDate !== undefined) updates.endDate = endDate ? new Date(endDate) : null;
       if (cf) {
         updates.customFields = { ...(current.customFields as Record<string, unknown>), ...cf };
       }
@@ -288,6 +294,15 @@ export const itemRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
+      // Require at least one filter to prevent cross-tenant data leak
+      if (!input.itemId && !input.workspaceId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Must provide itemId or workspaceId" });
+      }
+
+      if (input.workspaceId) {
+        await assertWorkspaceMember(ctx.db, ctx.userId, input.workspaceId);
+      }
+
       const conditions = [];
 
       if (input.itemId) {
@@ -298,7 +313,7 @@ export const itemRouter = router({
       }
 
       return ctx.db.query.activityLog.findMany({
-        where: conditions.length > 0 ? and(...conditions) : undefined,
+        where: and(...conditions),
         orderBy: [desc(activityLog.createdAt)],
         limit: input.limit,
       });

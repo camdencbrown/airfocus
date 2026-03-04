@@ -6,6 +6,15 @@ import { users, organizations, organizationMembers, sessions } from "@airfocus/d
 import { signUpSchema, signInSchema } from "@airfocus/shared";
 import { createId } from "@airfocus/database";
 
+const isProd = process.env.NODE_ENV === "production";
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+  path: "/",
+  maxAge: 30 * 24 * 60 * 60,
+};
+
 export const authRouter = router({
   signUp: publicProcedure.input(signUpSchema).mutation(async ({ ctx, input }) => {
     const { db } = ctx;
@@ -71,13 +80,7 @@ export const authRouter = router({
     });
 
     // Set session cookie
-    ctx.res.setCookie("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
+    ctx.res.setCookie("session", token, cookieOptions);
 
     return { user: { id: user.id, email: user.email, name: user.name } };
   }),
@@ -110,13 +113,7 @@ export const authRouter = router({
       expiresAt,
     });
 
-    ctx.res.setCookie("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60,
-    });
+    ctx.res.setCookie("session", token, cookieOptions);
 
     return { user: { id: user.id, email: user.email, name: user.name } };
   }),
@@ -130,11 +127,28 @@ export const authRouter = router({
       throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
+    // Get the user's organization memberships
+    const orgMemberships = await ctx.db.query.organizationMembers.findMany({
+      where: eq(organizationMembers.userId, ctx.userId),
+      with: {
+        organization: true,
+      },
+    });
+
+    const orgs = orgMemberships.map((m) => ({
+      id: m.organization.id,
+      name: m.organization.name,
+      slug: m.organization.slug,
+      role: m.role,
+    }));
+
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
+      organizations: orgs,
+      defaultOrganizationId: orgs[0]?.id ?? null,
     };
   }),
 
@@ -143,7 +157,7 @@ export const authRouter = router({
     if (token) {
       await ctx.db.delete(sessions).where(eq(sessions.token, token));
     }
-    ctx.res.clearCookie("session", { path: "/" });
+    ctx.res.clearCookie("session", cookieOptions);
     return { success: true };
   }),
 });

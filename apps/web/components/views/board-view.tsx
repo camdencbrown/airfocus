@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { Badge } from "@/components/ui/badge";
 
 interface BoardItem {
   id: string;
   title: string;
   description: string | null;
   status: { id: string; name: string; color: string; category: string } | null;
-  itemType: { id: string; name: string; color: string } | null;
+  itemType: { id: string; name: string; color: string | null } | null;
   assignee: { id: string; name: string; avatarUrl: string | null } | null;
 }
 
@@ -25,9 +26,10 @@ interface BoardViewProps {
   items: BoardItem[];
   statuses: Status[];
   onUpdate: () => void;
+  onItemClick?: (id: string) => void;
 }
 
-export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
+export function BoardView({ items, statuses, onUpdate, onItemClick }: BoardViewProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -45,7 +47,6 @@ export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
   for (const col of columns) {
     itemsByStatus.set(col.id, []);
   }
-  // Items with no status go in first column
   const noStatusItems: BoardItem[] = [];
   for (const item of items) {
     if (item.status) {
@@ -93,7 +94,11 @@ export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
   }
 
   if (columns.length === 0) {
-    return <div className="text-muted-foreground text-sm">No statuses configured.</div>;
+    return (
+      <div className="text-muted-foreground text-sm">
+        No statuses configured.
+      </div>
+    );
   }
 
   return (
@@ -122,9 +127,9 @@ export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
               <span className="text-sm font-medium text-foreground">
                 {column.name}
               </span>
-              <span className="ml-auto text-xs text-muted-foreground">
+              <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
                 {colItems.length}
-              </span>
+              </Badge>
             </div>
 
             {/* Cards */}
@@ -134,8 +139,9 @@ export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
                   key={item.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, item.id)}
+                  onClick={() => onItemClick?.(item.id)}
                   className={cn(
-                    "rounded-lg border border-border bg-card p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
+                    "rounded-lg border border-border bg-card p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow",
                     draggingId === item.id && "opacity-50"
                   )}
                 >
@@ -154,15 +160,16 @@ export function BoardView({ items, statuses, onUpdate }: BoardViewProps) {
 
                   <div className="mt-2 flex items-center gap-2">
                     {item.itemType && (
-                      <span
-                        className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0"
                         style={{
-                          backgroundColor: item.itemType.color + "20",
-                          color: item.itemType.color,
+                          borderColor: (item.itemType.color ?? "#888") + "40",
+                          color: item.itemType.color ?? "#888",
                         }}
                       >
                         {item.itemType.name}
-                      </span>
+                      </Badge>
                     )}
                     {item.assignee && (
                       <span className="ml-auto text-[10px] text-muted-foreground">

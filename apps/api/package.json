@@ -3,29 +3,38 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    "./trpc": {
+      "types": "./dist/routes/index.d.ts",
+      "default": "./src/routes/index.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "tsc --noEmit"
+    "start": "tsx src/index.ts",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@airfocus/database": "workspace:*",
     "@airfocus/shared": "workspace:*",
+    "@fastify/cookie": "^11",
+    "@fastify/cors": "^10",
+    "@fastify/websocket": "^11",
     "@trpc/server": "^11",
+    "argon2": "^0.41",
     "drizzle-orm": "^0.39",
     "fastify": "^5",
-    "@fastify/cors": "^10",
-    "@fastify/cookie": "^11",
-    "@fastify/websocket": "^11",
+    "ioredis": "^5",
     "superjson": "^2",
-    "zod": "^3.24",
-    "argon2": "^0.41",
-    "ioredis": "^5"
+    "tsx": "^4",
+    "zod": "^3.24"
   },
   "devDependencies": {
-    "tsx": "^4",
+    "@types/node": "^22",
     "typescript": "^5.7",
-    "@types/node": "^22"
+    "vitest": "^4.0.18"
   }
 }
