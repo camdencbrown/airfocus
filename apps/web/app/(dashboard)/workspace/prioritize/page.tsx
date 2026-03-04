@@ -296,12 +296,10 @@ function RankedView({
           {/* Criteria scores */}
           {fw.criteria.map((criterion) => {
             const value = item.scores[criterion.id] ?? criterion.min;
-            const labels = "labels" in criterion ? (criterion.labels as Record<number, string>) : undefined;
-            const suffix = "suffix" in criterion ? (criterion.suffix as string) : "";
-            const display = labels?.[value] ?? `${value}${suffix}`;
+            const labels = "labels" in criterion ? (criterion as any).labels as Record<number, string> : undefined;
             return (
               <div key={criterion.id} className="w-20 text-center text-xs text-muted-foreground">
-                {display}
+                {labels?.[value] ?? value}
               </div>
             );
           })}
@@ -339,27 +337,38 @@ function MatrixView({
   onScoreUpdate: (itemId: string, scores: Record<string, number>) => void;
 }) {
   const fw = SCORING_FRAMEWORKS[framework];
-
-  // For matrix we need 2 axes — use first 2 criteria, or value/effort
-  const xCriterion = fw.criteria[0]!;
-  const yCriterion = (fw.criteria.length > 1 ? fw.criteria[1] : fw.criteria[0])!;
+  const xAxis = fw.xAxis;
+  const yAxis = fw.yAxis;
 
   const matrixSize = 400;
+
+  // Compute axis values for all items to determine range
+  const axisData = useMemo(() => {
+    return items.map((item) => ({
+      x: xAxis.calc(item.scores),
+      y: yAxis.calc(item.scores),
+    }));
+  }, [items, xAxis, yAxis]);
+
+  const xMin = Math.min(...axisData.map((d) => d.x), 0);
+  const xMax = Math.max(...axisData.map((d) => d.x), 10);
+  const yMin = Math.min(...axisData.map((d) => d.y), 0);
+  const yMax = Math.max(...axisData.map((d) => d.y), 10);
 
   return (
     <div className="flex flex-col items-center">
       <div className="mb-4 text-sm text-muted-foreground">
-        <span className="font-medium">{xCriterion.name}</span> (x-axis) vs{" "}
-        <span className="font-medium">{yCriterion.name}</span> (y-axis)
+        <span className="font-medium">{xAxis.name}</span> (x-axis) vs{" "}
+        <span className="font-medium">{yAxis.name}</span> (y-axis)
       </div>
 
       <div className="relative" style={{ width: matrixSize + 60, height: matrixSize + 60 }}>
         {/* Quadrant labels */}
         <div className="absolute text-[10px] text-muted-foreground/60 font-medium" style={{ left: matrixSize * 0.25 + 30, top: 8 }}>
-          Low {xCriterion.name} / High {yCriterion.name}
+          Low {xAxis.name} / High {yAxis.name}
         </div>
         <div className="absolute text-[10px] text-muted-foreground/60 font-medium" style={{ right: 0, top: 8 }}>
-          High {xCriterion.name} / High {yCriterion.name}
+          High {xAxis.name} / High {yAxis.name}
         </div>
 
         {/* Grid */}
@@ -376,15 +385,14 @@ function MatrixView({
           <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-red-500/5 rounded-bl-lg" />
 
           {/* Plot items */}
-          {items.map((item) => {
-            const xVal = item.scores[xCriterion.id] ?? xCriterion.min;
-            const yVal = item.scores[yCriterion.id] ?? yCriterion.min;
+          {items.map((item, i) => {
+            const { x, y } = axisData[i]!;
 
-            const xRange = xCriterion.max - xCriterion.min;
-            const yRange = yCriterion.max - yCriterion.min;
+            const xRange = xMax - xMin;
+            const yRange = yMax - yMin;
 
-            const xPct = xRange > 0 ? ((xVal - xCriterion.min) / xRange) * 100 : 50;
-            const yPct = yRange > 0 ? ((yVal - yCriterion.min) / yRange) * 100 : 50;
+            const xPct = xRange > 0 ? ((x - xMin) / xRange) * 100 : 50;
+            const yPct = yRange > 0 ? ((y - yMin) / yRange) * 100 : 50;
 
             const color = item.status?.color ?? item.itemType?.color ?? "#6b7280";
 
@@ -393,8 +401,8 @@ function MatrixView({
                 key={item.id}
                 className="absolute -translate-x-1/2 translate-y-1/2 z-10 group"
                 style={{
-                  left: `${xPct}%`,
-                  bottom: `${yPct}%`,
+                  left: `${Math.max(5, Math.min(95, xPct))}%`,
+                  bottom: `${Math.max(5, Math.min(95, yPct))}%`,
                 }}
                 onClick={() => onItemClick(item.id)}
                 title={item.title}
@@ -421,7 +429,7 @@ function MatrixView({
             transformOrigin: "left center",
           }}
         >
-          {yCriterion.name}
+          {yAxis.name}
         </div>
 
         {/* X-axis label */}
@@ -433,7 +441,7 @@ function MatrixView({
             transform: "translateX(-50%)",
           }}
         >
-          {xCriterion.name}
+          {xAxis.name}
         </div>
       </div>
 
