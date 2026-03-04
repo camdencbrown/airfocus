@@ -128,6 +128,7 @@ export default function DashboardLayout({
 
   const signOut = trpc.auth.signOut.useMutation({
     onSuccess: () => {
+      setSelectedWorkspaceId(null);
       router.push("/login");
     },
   });
